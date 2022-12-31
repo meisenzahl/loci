@@ -1,0 +1,40 @@
+FROM docker.io/elementary/docker:odin-stable
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Prepare elementary sources
+RUN if [ -f "/etc/apt/sources.list.d/elementary-os-ubuntu-stable-focal.list" ]; then \
+        sed -i '/deb-src/s/^#//g' /etc/apt/sources.list.d/elementary-os-ubuntu-stable-focal.list ;\
+    fi
+
+# Prepare elementary patch sources
+RUN if [ -f "/etc/apt/sources.list.d/elementary-os-ubuntu-os-patches-focal.list" ]; then \
+        sed -i '/deb-src/s/^#//g' /etc/apt/sources.list.d/elementary-os-ubuntu-os-patches-focal.list ;\
+    fi
+
+RUN apt-get -qq update && \
+    apt-get -qq dist-upgrade -y && \
+    apt-get -qq install -y \
+    elementary-sdk \
+    git \
+    # new dependency of settings-daemon
+    libpackagekit-glib2-dev \
+    # new dependency of settings-daemon
+    libpolkit-gobject-1-dev \
+    # dependency of switchboard-plug-about
+    libudisks2-dev \
+    && apt-get -qq build-dep -y io.elementary.settings-daemon && \
+    apt-get -qq build-dep -y switchboard-plug-about && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN cd /tmp && \
+    git clone https://github.com/elementary/settings-daemon --branch offline-system-upgrades --depth 1 && \
+    cd settings-daemon && \
+    meson build --prefix=/usr && \
+    ninja -C build install
+
+RUN cd /tmp && \
+    git clone https://github.com/elementary/switchboard-plug-about --branch offline-system-upgrades --depth 1 && \
+    cd switchboard-plug-about && \
+    meson build --prefix=/usr && \
+    ninja -C build install

@@ -1,0 +1,98 @@
+#!/usr/bin/env python3
+import argparse
+import subprocess
+import urllib.request
+
+
+def read_file(path: str) -> str:
+    try:
+        if path.startswith("http://") or path.startswith("https://"):
+            with urllib.request.urlopen(path) as f:
+                return f.read().decode("utf-8")
+
+        with open(path, "r") as f:
+            return f.read()
+    except:
+        return None
+
+
+def is_command_line(line: str) -> bool:
+    l = line.strip()
+    parts = line.split(" ")
+    if len(parts) == 0:
+        return False
+
+    return parts[0].isupper()
+
+
+def get_commands(content: str) -> list[str]:
+    commands = []
+
+    content_list = content.split("\n")
+    command = ""
+    for i in range(len(content_list)):
+        line = content_list[i]
+        if len(line) == 0:
+            continue
+
+        if is_command_line(line):
+            if len(command) > 0:
+                commands.append(command)
+
+            if line.strip().endswith("\\"):
+                command = line.strip()[:-1]
+            else:
+                command = line.strip()
+
+            continue
+        elif line.strip().startswith("#"):
+            continue
+        elif len(command) > 0:
+            if line.rstrip().endswith("\\"):
+                command += line.rstrip()[:-1]
+            else:
+                command += line.rstrip()
+
+    if len(command) > 0:
+        commands.append(command)
+
+    return commands
+
+
+def execute_commands(commands: list[str]) -> None:
+    env = {}
+    count = len(commands)
+    for i in range(count):
+        command = commands[i]
+        print(f"STEP {i+1}/{count}: {command}")
+
+        if command.startswith("ARG"):
+            key, value = command[4:].split("=")
+            env[key] = value
+        elif command.startswith("RUN"):
+            cmd = command[4:]
+            process = subprocess.run(cmd, shell=True, env=env)
+
+            if process.returncode != 0:
+                exit(process.returncode)
+
+
+def main(args: dict) -> None:
+    if args["build"]:
+        containerfile = args.get("containerfile")
+
+        containerfile_content = read_file(containerfile)
+
+        commands = get_commands(containerfile_content)
+
+        execute_commands(commands)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "build", type=bool, help="Build an image using instructions from Containerfiles")
+    parser.add_argument("containerfile", nargs="?")
+    args = parser.parse_args()
+
+    main(vars(args))

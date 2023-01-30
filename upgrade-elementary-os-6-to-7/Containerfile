@@ -17,12 +17,9 @@ RUN apt-get -qq update && \
     apt-get -qq install -y \
     elementary-sdk \
     git \
-    # new dependency of settings-daemon
-    libpackagekit-glib2-dev \
-    # new dependency of settings-daemon
-    libpolkit-gobject-1-dev \
-    # dependency of switchboard-plug-about
-    libudisks2-dev \
+    libpackagekit-glib2-dev \ # new dependency of settings-daemon
+    libpolkit-gobject-1-dev \ # new dependency of settings-daemon
+    libudisks2-dev \ # dependency of switchboard-plug-about
     && apt-get -qq build-dep -y io.elementary.settings-daemon && \
     apt-get -qq build-dep -y switchboard-plug-about && \
     rm -rf /var/lib/apt/lists/*
